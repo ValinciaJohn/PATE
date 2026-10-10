@@ -1,9 +1,9 @@
-# member1_teachers/split.py
 # MEMBER 1: split the data into 4 parts and turn the tables into numbers.
 #   private 60%  -> teachers train here (and the baseline, and the MIA "members")
 #   public  15%  -> inputs for the student
 #   test    15%  -> measures accuracy
 #   holdout 10%  -> never trained on, used as the MIA "non-members"
+from functools import lru_cache
 import numpy as np
 from sklearn.model_selection import train_test_split
 from member1_teachers.preprocess import load_adult, make_transformer
@@ -25,8 +25,9 @@ def make_splits(X, y, seed=42):
     }
 
 
+@lru_cache(maxsize=3)          # same seed asked again -> reuse the result instead of recomputing
 def prepare_data(seed=42):
-    """Load -> split -> turn into numbers (the numbers recipe is learned from the private part only)."""
+    """Load -> split -> text to integers (the map is learned from the private part only)."""
     X, y = load_adult()
     splits = make_splits(X, y, seed)
     transformer = make_transformer(splits["private"][0])
@@ -54,8 +55,9 @@ if __name__ == "__main__":
     assert len(seen) == total
     print("OK: every row is in exactly one part")
 
-    # CHECK 2: the number columns are scaled (they sit at the end, and their average should be about 0)
-    n_numbers = splits["private"][0].select_dtypes(exclude="object").shape[1]
-    scaled = data["X_private"][:, -n_numbers:]
-    print("average of the scaled number columns (should be near 0):", round(float(np.abs(scaled.mean(axis=0)).max()), 6))
-    print("number of columns after one-hot:", data["X_private"].shape[1])
+    # CHECK 2: no NaN, and the number of columns equals the number of features (no one-hot)
+    assert not np.isnan(data["X_private"]).any()
+    assert data["X_private"].shape[1] == splits["private"][0].shape[1]
+    print("OK: columns =", data["X_private"].shape[1], "(one integer column per feature)")
+    unseen = int((data["X_test"] == -1).sum() + (data["X_public"] == -1).sum() + (data["X_holdout"] == -1).sum())
+    print("values never seen in the private part (mapped to -1):", unseen)

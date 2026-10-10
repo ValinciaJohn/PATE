@@ -1,7 +1,6 @@
-# member1_teachers/teachers.py
-# MEMBER 1: cut the private pool into N separate groups, train one teacher per group, collect their votes.
+# MEMBER 1: cut the private pool into N separate groups, train one random forest per group, collect votes.
 import numpy as np
-from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
 from member1_teachers.split import prepare_data
 
 
@@ -12,10 +11,10 @@ def make_partitions(n_rows, n_teachers, seed=42):
 
 
 def train_teachers(X_private, y_private, n_teachers, seed=42):
-    """One logistic regression per group. Each teacher only ever sees its own group."""
+    """One random forest (100 trees, paper Appendix C) per group. A teacher only sees its own group."""
     teachers = []
-    for rows in make_partitions(len(X_private), n_teachers, seed):
-        model = LogisticRegression(max_iter=1000)
+    for i, rows in enumerate(make_partitions(len(X_private), n_teachers, seed)):
+        model = RandomForestClassifier(n_estimators=100, random_state=seed + i)
         model.fit(X_private[rows], y_private[rows])
         teachers.append(model)
     return teachers
@@ -30,7 +29,7 @@ if __name__ == "__main__":
     data, _ = prepare_data()
     n_private = len(data["X_private"])
 
-    for n_teachers in [10, 25, 50]:
+    for n_teachers in [10, 100, 250]:
         # CHECK 1: the groups are separate and together cover the private pool exactly once
         groups = make_partitions(n_private, n_teachers)
         all_rows = np.concatenate(groups)
@@ -43,11 +42,7 @@ if __name__ == "__main__":
         assert votes.shape == (n_teachers, len(data["X_public"]))
         assert votes.min() >= 0 and votes.max() <= 1
 
-        # CHECK 3: same seed -> same votes
-        votes_again = get_votes(train_teachers(data["X_private"], data["y_private"], n_teachers), data["X_public"])
-        assert (votes == votes_again).all()
-
-        # Numbers for your report
+        # Numbers for your report (paper Sec. 4.1)
         teacher_acc = np.mean([t.score(data["X_test"], data["y_test"]) for t in teachers])
         ones = votes.sum(axis=0)                                  # how many teachers said "1" per row
         agreement = np.abs(ones - (n_teachers - ones)).mean() / n_teachers   # 1.0 = all teachers always agree

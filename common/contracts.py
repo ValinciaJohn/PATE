@@ -1,11 +1,10 @@
-# common/contracts.py
 # SHARED by all 3 members. Changes need all 3 approvals.
 # These classes describe the settings and the small result files that move between members.
 from pydantic import BaseModel, Field
 
 
 class ExperimentConfig(BaseModel):
-    run_id: str                       # e.g. "t25_b2_q300_s42"
+    run_id: str                       # e.g. "t250_b20_q500_s42"
     dataset: str = "adult"
     seed: int = 42
     n_teachers: int = Field(ge=2)
@@ -27,6 +26,7 @@ class DataManifest(BaseModel):        # written by Member 1
 
 class PrivacyReport(BaseModel):       # written by Member 2
     run_id: str
+    seed: int
     epsilon: float
     delta: float
     noise_scale: float
@@ -37,6 +37,7 @@ class PrivacyReport(BaseModel):       # written by Member 2
 
 class ResultRow(BaseModel):           # written by Member 3
     run_id: str
+    seed: int
     n_teachers: int
     noise_scale: float
     n_queries: int

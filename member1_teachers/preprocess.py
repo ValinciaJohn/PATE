@@ -1,27 +1,24 @@
-# member1_teachers/preprocess.py
-# MEMBER 1: load the Adult dataset from UCI, clean it, and build the feature transformer.
-import os
+# MEMBER 1: load the Adult dataset DIRECTLY from the UCI site, clean it, and build the "text -> integer" converter.
+# Source: https://archive.ics.uci.edu/dataset/2/adult  (dataset id 2). No other copy of the data is used.
+# Paper Appendix C: each text column becomes integers. No one-hot, no scaling.
+from functools import lru_cache
 import pandas as pd
+from pandas.api.types import is_numeric_dtype
 from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import OneHotEncoder, StandardScaler
-
-CACHE_FILE = os.path.join("data", "raw", "adult.csv")
+from sklearn.preprocessing import OrdinalEncoder
 
 
+@lru_cache(maxsize=1)          # download once per run of the program, then reuse
 def load_adult():
     """Return (X, y). X = clean feature table, y = 0/1 labels (1 = income over 50K)."""
-    if os.path.exists(CACHE_FILE):                       # already downloaded before
-        df = pd.read_csv(CACHE_FILE)
-    else:                                                # first time: download from UCI
-        from ucimlrepo import fetch_ucirepo
-        adult = fetch_ucirepo(id=2)
-        df = adult.data.features.copy()
-        df["income"] = adult.data.targets.iloc[:, 0]
-        os.makedirs(os.path.dirname(CACHE_FILE), exist_ok=True)
-        df.to_csv(CACHE_FILE, index=False)               # save so we never download again
+    from ucimlrepo import fetch_ucirepo
+    adult = fetch_ucirepo(id=2)                          # downloads from archive.ics.uci.edu
+    df = adult.data.features.copy()
+    df["income"] = adult.data.targets.iloc[:, 0]
 
     # remove extra spaces from text columns, and turn "?" into missing
-    for col in df.select_dtypes(include="object").columns:
+    text_columns = [c for c in df.columns if not is_numeric_dtype(df[c])]
+    for col in text_columns:
         df[col] = df[col].astype(str).str.strip().replace({"?": pd.NA, "nan": pd.NA})
 
     df = df.dropna().reset_index(drop=True)              # drop rows with missing values
@@ -33,12 +30,13 @@ def load_adult():
 
 
 def make_transformer(X_private):
-    """Learn one-hot + scaling from the PRIVATE pool only, then reuse it on the other splits."""
-    text_cols = X_private.select_dtypes(include="object").columns.tolist()
-    number_cols = X_private.select_dtypes(exclude="object").columns.tolist()
+    """Learn the text -> integer map from the PRIVATE pool only.
+    A category the private pool never saw becomes -1 in the other splits."""
+    text_cols = [c for c in X_private.columns if not is_numeric_dtype(X_private[c])]
+    number_cols = [c for c in X_private.columns if is_numeric_dtype(X_private[c])]
     transformer = ColumnTransformer([
-        ("text", OneHotEncoder(handle_unknown="ignore", sparse_output=False), text_cols),
-        ("numbers", StandardScaler(), number_cols),
+        ("text", OrdinalEncoder(handle_unknown="use_encoded_value", unknown_value=-1), text_cols),
+        ("numbers", "passthrough", number_cols),         # numbers stay as they are (no scaling)
     ])
     transformer.fit(X_private)
     return transformer
