@@ -1,5 +1,6 @@
 """Bucket 6 / entry point: aggregate_and_account(cfg) -> PrivacyReport.
-Reads manifest + teacher_votes, answers n_queries random public queries with noisy-max,
+Reads manifest + teacher_votes, answers n_queries public queries (random, or the rows in the optional
+query_request.npy from Member 3) with noisy-max,
 writes query_idx.npy, noisy_labels.npy, privacy_report.json (+ accountant_details.json)."""
 import json
 import numpy as np
@@ -22,7 +23,15 @@ def aggregate_and_account(cfg: ExperimentConfig) -> PrivacyReport:
     if cfg.n_queries > m.n_public:
         raise ValueError("n_queries exceeds public pool size")
 
-    idx = np.sort(np.random.default_rng(cfg.seed).choice(m.n_public, cfg.n_queries, replace=False))
+    # Optional input from Member 3 (Appendix B.2 experiment). If the file is absent, we pick
+    # random rows (seeded), so this module runs and tests fine without Member 3.
+    req = d / "query_request.npy"
+    if req.exists():
+        idx = np.load(req)          # keep Member 3's order (least confident first)
+        if len(idx) != cfg.n_queries or idx.min() < 0:
+            raise ValueError("query_request.npy must hold n_queries valid, unique public indices")
+    else:
+        idx = np.sort(np.random.default_rng(cfg.seed).choice(m.n_public, cfg.n_queries, replace=False))
     counts = vote_counts(votes[:, idx], m.n_classes)
     labels = noisy_argmax(counts, cfg.noise_scale, np.random.default_rng(cfg.seed + 10_000))
     check_labels(idx, labels, m)

@@ -96,3 +96,27 @@ def test_aggregate_and_account_on_dummy(tmp_path, monkeypatch):
     assert len(idx) == 300 and np.isfinite(rep.epsilon) and rep.epsilon > 0
     PrivacyReport.model_validate_json((d / paths.PRIVACY_REPORT).read_text())
     assert aggregate_and_account(cfg).epsilon == rep.epsilon   # same seed -> same output
+
+
+# ---- optional query_request.npy from Member 3 (Appendix B.2) ----
+def test_query_request_is_used_when_present(tmp_path, monkeypatch):
+    monkeypatch.setenv("PATE_ARTIFACT_ROOT", str(tmp_path))
+    cfg = ExperimentConfig(run_id="req", n_teachers=25, noise_scale=5, n_queries=50)
+    make_dummy_artifacts(cfg)
+    d = paths.artifact_dir(cfg.run_id)
+    want = np.random.default_rng(1).permutation(1000)[:50]
+    np.save(d / "query_request.npy", want)
+    aggregate_and_account(cfg)
+    assert (np.load(d / paths.QUERY_IDX) == want).all()            # Member 3's order is kept
+    np.save(d / "query_request.npy", np.zeros(50, dtype=int))      # duplicates must be rejected
+    with pytest.raises(AssertionError):
+        aggregate_and_account(cfg)
+
+
+def test_query_request_wrong_length_is_rejected(tmp_path, monkeypatch):
+    monkeypatch.setenv("PATE_ARTIFACT_ROOT", str(tmp_path))
+    cfg = ExperimentConfig(run_id="req2", n_teachers=25, noise_scale=5, n_queries=50)
+    make_dummy_artifacts(cfg)
+    np.save(paths.artifact_dir(cfg.run_id) / "query_request.npy", np.arange(40))
+    with pytest.raises(ValueError):
+        aggregate_and_account(cfg)
