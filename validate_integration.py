@@ -171,8 +171,14 @@ def check_member2(d, cfg, m, votes, ypu, real):
     try:
         from member2_privacy.smooth_sensitivity import release_epsilon
         r = release_epsilon(counts, cfg.noise_scale, cfg.delta, rng=0)
-        ok(math.isfinite(r["noise_scale"]) and abs(r["epsilon"] - rep.epsilon) < 1e-6, "smooth-sensitivity release works (Sec. 3.3)",
-           f"noise scale {r['noise_scale']:.4f}; the release itself is ({r['eps_ss']:.2f}, {r['delta']:g})-DP")
+        if 0.5 * g * 8 <= 1:
+            ok(math.isfinite(r["noise_scale"]) and abs(r["epsilon"] - rep.epsilon) < 1e-6,
+               "smooth-sensitivity release works (Sec. 3.3)",
+               f"noise scale {r['noise_scale']:.4f}; the release itself is ({r['eps_ss']:.2f}, {r['delta']:g})-DP")
+        else:
+            ok(math.isfinite(r["noise_scale"]) and r["epsilon"] >= rep.epsilon - 1e-9,
+               "smooth-sensitivity release works with the restricted lambda set (gamma > 0.25)",
+               f"noise scale {r['noise_scale']:.4f}; restricted-lambda epsilon {r['epsilon']:.3f} vs accountant {rep.epsilon:.3f}")
     except ValueError as e:
         rec("WARN", "smooth-sensitivity release not available at this noise scale", str(e))
 
