@@ -1,10 +1,11 @@
-```gitignore
 __pycache__/
 .pytest_cache/
+*.pyc
 artifacts/
 data/raw/
 .venv/
-*.pyc
 integration_review/
-m2_adapted_to_member1.zip
-```
+common_local_backup/
+*.zip
+
+validation_review/

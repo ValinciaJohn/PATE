@@ -12,6 +12,7 @@ Reads artifacts/<run_id>/privacy_report.json + accountant_details.json (+ teache
 Writes to results/."""
 import json
 import os
+import re
 from pathlib import Path
 import numpy as np
 import pandas as pd
@@ -33,11 +34,21 @@ def _results():
     return results_dir()
 
 
+GRID_RUN = re.compile(r"^t(\d+)_b(\d+)_q(\d+)_s(\d+)$")
+# plan grid (+ 25 and 50 teachers for the Sec. 3.3 trade-off); folders outside it are test leftovers and are ignored
+GRID_VALUES = ([10, 25, 50, 100, 250], [1, 5, 20, 100], [100, 500, 1000], [42, 43, 44])
+
+
+def _in_grid(name):
+    g = GRID_RUN.match(name)
+    return bool(g) and all(int(v) in allowed for v, allowed in zip(g.groups(), GRID_VALUES))
+
+
 def load_runs():
     rows = []
     for d in sorted(_root().iterdir()):
         rp = d / "privacy_report.json"
-        if not rp.exists():
+        if not _in_grid(d.name) or not rp.exists():
             continue
         r = json.loads(rp.read_text())
         det = d / "accountant_details.json"
