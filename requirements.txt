@@ -1,6 +1,10 @@
+```text
 numpy
 pandas
 scikit-learn
 pydantic>=2
 pytest
+pyyaml
+ucimlrepo
 matplotlib
+```

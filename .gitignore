@@ -1,5 +1,8 @@
+```gitignore
 __pycache__/
 .pytest_cache/
 artifacts/
 data/raw/
 .venv/
+*.pyc
+```

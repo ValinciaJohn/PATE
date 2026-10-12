@@ -23,7 +23,9 @@ from .aggregate import vote_counts
 
 
 def _root():
-    return Path(os.environ.get("PATE_ARTIFACT_ROOT", paths.ROOT / "artifacts"))
+    d = Path(os.environ.get("PATE_ARTIFACT_ROOT", paths.ROOT / "artifacts"))
+    d.mkdir(parents=True, exist_ok=True)
+    return d
 
 
 def _results():
