@@ -61,7 +61,7 @@ def load_runs():
 
 def plot_accuracy_vs_noise(df, n_queries=500):
     """Fig. 2: accuracy of the noisy aggregation vs gamma = 1/noise_scale."""
-    d = df[df.n_queries == n_queries]
+    d = df[(df.n_queries == n_queries) & df.n_teachers.isin([10, 100, 250])]  # the paper's Fig. 2 teacher counts
     fig, ax = plt.subplots(figsize=(6.5, 4.2))
     for n, g in d.groupby("n_teachers"):
         s = g.groupby("noise_scale").label_accuracy.mean().sort_index()
