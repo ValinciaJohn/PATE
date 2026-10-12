@@ -121,3 +121,15 @@ def test_query_request_wrong_length_is_rejected(tmp_path, monkeypatch):
     np.save(art_dir(cfg.run_id) / "query_request.npy", np.arange(40))
     with pytest.raises(ValueError):
         aggregate_and_account(cfg)
+
+
+def test_query_sets_are_nested_so_epsilon_grows_with_queries(tmp_path, monkeypatch):
+    monkeypatch.setattr(paths, "ARTIFACT_ROOT", str(tmp_path))
+    eps, sets = [], []
+    for q in (100, 500, 1000):
+        cfg = ExperimentConfig(run_id=f"t100_b1_q{q}_s42", seed=42, n_teachers=100, noise_scale=1, n_queries=q)
+        make_dummy_artifacts(cfg, n_public=2000)
+        eps.append(aggregate_and_account(cfg).epsilon)
+        sets.append(set(np.load(art_dir(cfg.run_id) / paths.QUERY_IDX).tolist()))
+    assert sets[0] <= sets[1] <= sets[2]
+    assert eps[0] < eps[1] < eps[2]

@@ -32,7 +32,9 @@ def aggregate_and_account(cfg: ExperimentConfig) -> PrivacyReport:
         if len(idx) != cfg.n_queries or idx.min() < 0:
             raise ValueError("query_request.npy must hold n_queries valid, unique public indices")
     else:
-        idx = np.sort(np.random.default_rng(cfg.seed).choice(m.n_public, cfg.n_queries, replace=False))
+        # first n_queries of one seeded permutation: sets for 100 < 500 < 1000 queries are nested (as the paper's
+        # "first N inputs"), so epsilon can only grow with the number of queries for a fixed seed and noise scale
+        idx = np.sort(np.random.default_rng(cfg.seed).permutation(m.n_public)[:cfg.n_queries])
     counts = vote_counts(votes[:, idx], m.n_classes)
     labels = noisy_argmax(counts, cfg.noise_scale, np.random.default_rng(cfg.seed + 10_000))
     check_labels(idx, labels, m)
