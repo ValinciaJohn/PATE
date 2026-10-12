@@ -3,7 +3,7 @@ Same grid as the plan (teachers x noise scale x queries x seeds). Replace with r
 votes later: `run_sweep.py` (integration) does the same loop with Member 1's real pipeline."""
 from itertools import product
 from common.contracts import ExperimentConfig
-from common.dummy import make_dummy_artifacts
+from .dummy_artifacts import make_dummy_artifacts
 from .aggregate import aggregate_and_account
 
 TEACHERS = [10, 100, 250]

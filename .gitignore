@@ -5,4 +5,6 @@ artifacts/
 data/raw/
 .venv/
 *.pyc
+integration_review/
+m2_adapted_to_member1.zip
 ```

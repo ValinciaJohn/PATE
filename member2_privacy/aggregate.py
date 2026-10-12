@@ -8,6 +8,7 @@ from common.contracts import ExperimentConfig, DataManifest, PrivacyReport, chec
 from common import paths
 from .noisy_max import noisy_argmax
 from . import accountant
+from ._io import art_dir
 
 
 def vote_counts(votes, n_classes):
@@ -16,7 +17,7 @@ def vote_counts(votes, n_classes):
 
 
 def aggregate_and_account(cfg: ExperimentConfig) -> PrivacyReport:
-    d = paths.artifact_dir(cfg.run_id)
+    d = art_dir(cfg.run_id)
     m = DataManifest.model_validate_json((d / paths.MANIFEST).read_text())
     votes = np.load(d / paths.TEACHER_VOTES)
     check_votes(votes, m)

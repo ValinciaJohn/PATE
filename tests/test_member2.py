@@ -1,7 +1,8 @@
 import numpy as np
 import pytest
 from common.contracts import ExperimentConfig, PrivacyReport, DataManifest, check_votes, check_labels
-from common.dummy import make_dummy_artifacts
+from member2_privacy.dummy_artifacts import make_dummy_artifacts
+from member2_privacy._io import art_dir
 from common import paths
 from member2_privacy.noisy_max import noisy_argmax
 from member2_privacy.aggregate import aggregate_and_account, vote_counts
@@ -85,11 +86,11 @@ def test_epsilon_floor_from_lambda_cap():
 
 # ---- entry point on dummy artifacts ----
 def test_aggregate_and_account_on_dummy(tmp_path, monkeypatch):
-    monkeypatch.setenv("PATE_ARTIFACT_ROOT", str(tmp_path))
+    monkeypatch.setattr(paths, "ARTIFACT_ROOT", str(tmp_path))
     cfg = ExperimentConfig(run_id="t25_b2_q300_s42", n_teachers=25, noise_scale=2, n_queries=300)
     make_dummy_artifacts(cfg)
     rep = aggregate_and_account(cfg)
-    d = paths.artifact_dir(cfg.run_id)
+    d = art_dir(cfg.run_id)
     m = DataManifest.model_validate_json((d / paths.MANIFEST).read_text())
     idx, lab = np.load(d / paths.QUERY_IDX), np.load(d / paths.NOISY_LABELS)
     check_labels(idx, lab, m)
@@ -100,10 +101,10 @@ def test_aggregate_and_account_on_dummy(tmp_path, monkeypatch):
 
 # ---- optional query_request.npy from Member 3 (Appendix B.2) ----
 def test_query_request_is_used_when_present(tmp_path, monkeypatch):
-    monkeypatch.setenv("PATE_ARTIFACT_ROOT", str(tmp_path))
+    monkeypatch.setattr(paths, "ARTIFACT_ROOT", str(tmp_path))
     cfg = ExperimentConfig(run_id="req", n_teachers=25, noise_scale=5, n_queries=50)
     make_dummy_artifacts(cfg)
-    d = paths.artifact_dir(cfg.run_id)
+    d = art_dir(cfg.run_id)
     want = np.random.default_rng(1).permutation(1000)[:50]
     np.save(d / "query_request.npy", want)
     aggregate_and_account(cfg)
@@ -114,9 +115,9 @@ def test_query_request_is_used_when_present(tmp_path, monkeypatch):
 
 
 def test_query_request_wrong_length_is_rejected(tmp_path, monkeypatch):
-    monkeypatch.setenv("PATE_ARTIFACT_ROOT", str(tmp_path))
+    monkeypatch.setattr(paths, "ARTIFACT_ROOT", str(tmp_path))
     cfg = ExperimentConfig(run_id="req2", n_teachers=25, noise_scale=5, n_queries=50)
     make_dummy_artifacts(cfg)
-    np.save(paths.artifact_dir(cfg.run_id) / "query_request.npy", np.arange(40))
+    np.save(art_dir(cfg.run_id) / "query_request.npy", np.arange(40))
     with pytest.raises(ValueError):
         aggregate_and_account(cfg)

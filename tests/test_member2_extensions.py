@@ -1,7 +1,8 @@
 import numpy as np
 import pytest
 from common.contracts import ExperimentConfig
-from common.dummy import make_dummy_artifacts
+from member2_privacy.dummy_artifacts import make_dummy_artifacts
+from member2_privacy._io import art_dir
 from common import paths
 from member2_privacy import accountant as acc
 from member2_privacy import smooth_sensitivity as ss
@@ -57,12 +58,12 @@ def test_release_epsilon_is_reproducible_and_consistent():
 
 
 def test_release_for_run_writes_file(tmp_path, monkeypatch):
-    monkeypatch.setenv("PATE_ARTIFACT_ROOT", str(tmp_path))
+    monkeypatch.setattr(paths, "ARTIFACT_ROOT", str(tmp_path))
     cfg = ExperimentConfig(run_id="rel", n_teachers=250, noise_scale=20, n_queries=200)
     make_dummy_artifacts(cfg)
     aggregate_and_account(cfg)
     out = ss.release_for_run("rel")
-    assert (paths.artifact_dir("rel") / "epsilon_release.json").exists() and out["noise_scale"] > 0
+    assert (art_dir("rel") / "epsilon_release.json").exists() and out["noise_scale"] > 0
 
 
 # ---------- extension 2: verification ----------

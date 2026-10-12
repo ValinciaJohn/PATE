@@ -22,6 +22,7 @@ from common import paths
 from common.contracts import DataManifest, PrivacyReport
 from . import accountant as acc
 from .aggregate import vote_counts
+from ._io import art_dir
 
 BETA = 0.09   # the authors' default
 
@@ -70,7 +71,7 @@ def release_epsilon(counts, scale, delta, beta=BETA, rng=None, lambdas=acc.LAMBD
 
 def release_for_run(run_id, beta=BETA, seed=0):
     """Read an artifact folder, release epsilon for the queries actually answered, write epsilon_release.json."""
-    d = paths.artifact_dir(run_id)
+    d = art_dir(run_id)
     m = DataManifest.model_validate_json((d / paths.MANIFEST).read_text())
     rep = PrivacyReport.model_validate_json((d / paths.PRIVACY_REPORT).read_text())
     votes = np.load(d / paths.TEACHER_VOTES)

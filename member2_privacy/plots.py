@@ -4,6 +4,8 @@ Plot 1  paper Sec. 4.1, Fig. 2: noisy-label accuracy vs gamma, one line per teac
 Plot 2  paper Sec. 4.1, Fig. 3: vote gap (top minus second, divided by n teachers) vs number of teachers
 Plot 3  paper Sec. 4.2, Fig. 4: epsilon vs number of queries (data-dependent, data-independent, simple composition)
 Plot 4  extension (illustrates Lemma 4, Sec. 3.3): per-query privacy cost vs teacher vote gap
+Plot 5  extension (Sec. 3.3, "How does the number of teachers affect the privacy cost?"): epsilon, label accuracy
+        and average teacher accuracy vs number of teachers
 Table   epsilon, delta, queries (mean and std over seeds)
 
 Reads artifacts/<run_id>/privacy_report.json + accountant_details.json (+ teacher_votes.npy for Plot 2).
@@ -19,19 +21,16 @@ import matplotlib.pyplot as plt
 from common import paths
 from common.contracts import DataManifest, PrivacyReport
 from . import accountant as acc
+from ._io import art_root, results_dir
 from .aggregate import vote_counts
 
 
 def _root():
-    d = Path(os.environ.get("PATE_ARTIFACT_ROOT", paths.ROOT / "artifacts"))
-    d.mkdir(parents=True, exist_ok=True)
-    return d
+    return art_root()
 
 
 def _results():
-    d = Path(os.environ.get("PATE_RESULTS_DIR", paths.ROOT / "results"))
-    d.mkdir(parents=True, exist_ok=True)
-    return d
+    return results_dir()
 
 
 def load_runs():
@@ -133,6 +132,30 @@ def plot_cost_vs_gap(run_id="t250_b20_q500_s42"):
     return out
 
 
+def plot_teacher_tradeoff(df, n_queries=500, noise_scale=20):
+    """Extension 4: more teachers widen the vote gap (lower epsilon, better noisy labels) but each teacher
+    sees less data (lower teacher accuracy). Sec. 3.3, last paragraph: "true up to a point".
+    Teacher accuracy is measured on the public pool against y_public_true (a diagnostic; Member 2 may read it)."""
+    d = df[(df.n_queries == n_queries) & (df.noise_scale == noise_scale)].copy()
+    d["teacher_acc"] = [float((np.load(Path(p) / paths.TEACHER_VOTES) == np.load(Path(p) / paths.Y_PUBLIC_TRUE)).mean())
+                        for p in d["dir"]]
+    g = d.groupby("n_teachers")[["epsilon", "label_accuracy", "teacher_acc"]].mean().sort_index()
+    fig, ax = plt.subplots(figsize=(6.8, 4.4))
+    ax.plot(g.index, g.epsilon, "o-", color="C0", label="epsilon (data-dependent)")
+    ax.set_xscale("log"); ax.set_xticks(list(g.index)); ax.set_xticklabels([str(n) for n in g.index])
+    ax.set_xlabel("number of teachers"); ax.set_ylabel("epsilon", color="C0")
+    ax2 = ax.twinx()
+    ax2.plot(g.index, 100 * g.label_accuracy, "s--", color="C1", label="noisy-label accuracy (%)")
+    ax2.plot(g.index, 100 * g.teacher_acc, "^:", color="C2", label="average teacher accuracy (%)")
+    ax2.set_ylabel("accuracy (%)")
+    h1, l1 = ax.get_legend_handles_labels(); h2, l2 = ax2.get_legend_handles_labels()
+    fig.legend(h1 + h2, l1 + l2, fontsize=8, loc="lower center", ncol=3, frameon=False)
+    ax.set_title(f"Teacher-count trade-off (noise scale {noise_scale:g}, {n_queries} queries)", fontsize=10)
+    ax.grid(alpha=.3); fig.tight_layout(rect=(0, 0.07, 1, 1))
+    out = _results() / "fig6_teacher_tradeoff.png"; fig.savefig(out, dpi=150); plt.close(fig)
+    return out
+
+
 def epsilon_table(df):
     """Table: epsilon, delta, queries for every setting, mean and std over seeds."""
     keys = ["n_teachers", "noise_scale", "n_queries", "delta"]
@@ -152,6 +175,9 @@ def main(n_queries=500, ref_teachers=250, ref_scale=20, ref_seed=42):
     run_id = f"t{ref_teachers}_b{int(ref_scale)}_q{n_queries}_s{ref_seed}"
     if (_root() / run_id / paths.PRIVACY_REPORT).exists():
         out.append(plot_cost_vs_gap(run_id))
+    ref = df[(df.n_queries == n_queries) & (df.noise_scale == ref_scale)]
+    if ref.n_teachers.nunique() >= 2:
+        out.append(plot_teacher_tradeoff(df, n_queries, ref_scale))
     epsilon_table(df)
     return out
 
