@@ -5,6 +5,6 @@ def test_plots_and_table(tmp_path, monkeypatch):
     from member2_privacy import dev_sweep, plots
     dev_sweep.run(teachers=[10, 100], scales=[5, 20], queries=[100, 500], seeds=[42, 43], n_public=1000)
     out = plots.main(n_queries=500, ref_teachers=100, ref_scale=20)
-    assert all(p.exists() and p.stat().st_size > 5000 for p in out)
+    assert len(out) == 4 and all(p.exists() and p.stat().st_size > 5000 for p in out)   # includes fig5_cost_vs_gap.png
     df = pd.read_csv(tmp_path / "results" / "epsilon_table.csv")
     assert len(df) == 2 * 2 * 2 and (df.n_seeds == 2).all()

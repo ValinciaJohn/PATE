@@ -3,6 +3,7 @@
 Plot 1  paper Sec. 4.1, Fig. 2: noisy-label accuracy vs gamma, one line per teacher count
 Plot 2  paper Sec. 4.1, Fig. 3: vote gap (top minus second, divided by n teachers) vs number of teachers
 Plot 3  paper Sec. 4.2, Fig. 4: epsilon vs number of queries (data-dependent, data-independent, simple composition)
+Plot 4  extension (illustrates Lemma 4, Sec. 3.3): per-query privacy cost vs teacher vote gap
 Table   epsilon, delta, queries (mean and std over seeds)
 
 Reads artifacts/<run_id>/privacy_report.json + accountant_details.json (+ teacher_votes.npy for Plot 2).
@@ -16,6 +17,9 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from common import paths
+from common.contracts import DataManifest, PrivacyReport
+from . import accountant as acc
+from .aggregate import vote_counts
 
 
 def _root():
@@ -96,6 +100,37 @@ def plot_epsilon_vs_queries(df, n_teachers=250, noise_scale=20):
     return out
 
 
+def plot_cost_vs_gap(run_id="t250_b20_q500_s42"):
+    """Extension 3: privacy cost of each answered query vs how far ahead the winning class is.
+    Cost of query i at the best lambda* is alpha_i(lambda*) / lambda* (its share of epsilon beyond the
+    ln(1/delta)/lambda* term). Lemma 4 / Theorem 3: a wide gap makes the outcome near-certain, so the
+    data-dependent cost falls far below the data-independent Theorem 2 cost (dashed line)."""
+    d = _root() / run_id
+    m = DataManifest.model_validate_json((d / paths.MANIFEST).read_text())
+    rep = PrivacyReport.model_validate_json((d / paths.PRIVACY_REPORT).read_text())
+    idx = np.load(d / paths.QUERY_IDX)
+    counts = vote_counts(np.load(d / paths.TEACHER_VOTES)[:, idx], m.n_classes)
+    gamma = 1.0 / rep.noise_scale
+    alpha = acc.alpha_dependent(counts, gamma)                       # (queries, lambda)
+    eps, lam = acc.eps_from_alpha(alpha.sum(axis=0), rep.delta)
+    i = int(lam) - 1
+    cost = alpha[:, i] / lam
+    srt = np.sort(counts, axis=1)
+    gap = srt[:, -1] - srt[:, -2]
+    indep = acc.alpha_independent(1, gamma)[0, i] / lam
+    fig, ax = plt.subplots(figsize=(6.5, 4.2))
+    ax.scatter(gap, np.maximum(cost, 1e-12), s=10, alpha=.5, label="data-dependent cost per query (Thm 3)")
+    ax.axhline(indep, ls="--", color="C1", label="data-independent cost per query (Thm 2)")
+    ax.set_yscale("log")
+    ax.set_xlabel("teacher vote gap (top count minus second count)")
+    ax.set_ylabel(f"cost per query at lambda = {lam}")
+    ax.set_title(f"Close votes cost the most ({m.n_teachers} teachers, noise scale {rep.noise_scale:g}, {rep.n_queries} queries)",
+                 fontsize=9)
+    ax.grid(alpha=.3); ax.legend(fontsize=8); fig.tight_layout()
+    out = _results() / "fig5_cost_vs_gap.png"; fig.savefig(out, dpi=150); plt.close(fig)
+    return out
+
+
 def epsilon_table(df):
     """Table: epsilon, delta, queries for every setting, mean and std over seeds."""
     keys = ["n_teachers", "noise_scale", "n_queries", "delta"]
@@ -108,10 +143,13 @@ def epsilon_table(df):
     return t
 
 
-def main(n_queries=500, ref_teachers=250, ref_scale=20):
+def main(n_queries=500, ref_teachers=250, ref_scale=20, ref_seed=42):
     df = load_runs()
     out = [plot_accuracy_vs_noise(df, n_queries), plot_vote_gap(df),
            plot_epsilon_vs_queries(df, ref_teachers, ref_scale)]
+    run_id = f"t{ref_teachers}_b{int(ref_scale)}_q{n_queries}_s{ref_seed}"
+    if (_root() / run_id / paths.PRIVACY_REPORT).exists():
+        out.append(plot_cost_vs_gap(run_id))
     epsilon_table(df)
     return out
 

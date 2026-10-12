@@ -14,8 +14,7 @@ LAMBDAS = np.arange(1, 9)   # paper: integers up to 8
 
 def alpha_independent(n_queries, gamma, lambdas=LAMBDAS):
     lam = np.asarray(lambdas, float)
-    return np.tile(np.minimum(2 * gamma**2 * lam * (lam + 1), 2 * gamma * lam), (n_queries, 1))
-
+    return np.tile(2 * gamma**2 * lam * (lam + 1), (n_queries, 1))
 
 def q_upper_bound(counts, gamma):
     counts = np.asarray(counts, float)
