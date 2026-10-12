@@ -21,8 +21,8 @@ def aggregate_and_account(cfg: ExperimentConfig) -> PrivacyReport:
     m = DataManifest.model_validate_json((d / paths.MANIFEST).read_text())
     votes = np.load(d / paths.TEACHER_VOTES)
     check_votes(votes, m)
-    if cfg.n_queries > m.n_public:
-        raise ValueError("n_queries exceeds public pool size")
+    if cfg.n_queries >= m.n_public:
+        raise ValueError("n_queries must be smaller than the public pool (plan: never the whole pool)")
 
     # Optional input from Member 3 (Appendix B.2 experiment). If the file is absent, we pick
     # random rows (seeded), so this module runs and tests fine without Member 3.

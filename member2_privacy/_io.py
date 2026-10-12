@@ -1,5 +1,5 @@
 """Small adapter between Member 2's code and the shared `common/paths.py`.
-common/paths.py returns plain strings (artifact_dir) and has no ROOT, so every Member 2 module goes through here.
+Every Member 2 module goes through here, so the code works with the shared paths API.
 Run everything from the repo root: the artifacts folder is `paths.ARTIFACT_ROOT` ("artifacts")."""
 import os
 from pathlib import Path
