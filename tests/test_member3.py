@@ -10,6 +10,7 @@ from member3_student.student import train_student
 from member3_student.baseline import train_baseline
 from member3_student.mia import run_mia, per_example_loss
 from member3_student.evaluate import train_and_audit
+from member3_student.active import pick_unconfident, build_request, confidence
 
 
 @pytest.fixture
@@ -93,3 +94,31 @@ def test_loss_works_when_student_saw_only_one_class():
     model = train_student(X, np.arange(20), np.zeros(20, dtype=int))
     loss = per_example_loss(model, X, rng.integers(0, 2, 100))
     assert np.isfinite(loss).all() and (loss >= 0).all()
+
+# ---- active learning (Appendix B.2) ----
+
+
+
+def test_active_picks_new_unique_rows_least_confident_first():
+    rng = np.random.default_rng(0)
+    X = rng.normal(size=(1000, 5))
+    first = np.arange(50)
+    model = train_student(X, first, (X[first, 0] > 0).astype(int))
+    new = pick_unconfident(model, X, first, 100)
+    assert len(set(new.tolist())) == 100 and not set(new.tolist()) & set(first.tolist())
+    c = confidence(model, X[new])
+    assert (np.diff(c) >= 0).all()                                 # least sure first
+    rest = np.setdiff1d(np.arange(1000), np.concatenate([first, new]))
+    assert c.max() <= confidence(model, X[rest]).min()             # nobody left out is less sure
+
+
+def test_active_request_keeps_round1_rows_first():
+    rng = np.random.default_rng(1)
+    X = rng.normal(size=(500, 5))
+    first = rng.permutation(500)[:40]
+    model = train_student(X, first, rng.integers(0, 2, 40))
+    req = build_request(first, 200, model, X)
+    assert len(req) == 200 and len(set(req.tolist())) == 200
+    assert (req[:40] == first).all()
+    with pytest.raises(ValueError):
+        build_request(first, 600, model, X)                        # more rows than exist
