@@ -1,8 +1,11 @@
 # common/paths.py
 # SHARED. Where every hand-off file lives: artifacts/<run_id>/<file name>
 import os
+from pathlib import Path
 
-ARTIFACT_ROOT = "artifacts"
+# Allow tests and users to override the artifact root.
+ARTIFACT_ROOT = Path(os.environ.get("PATE_ARTIFACT_ROOT", "artifacts"))
+ROOT = Path(__file__).resolve().parent.parent
 
 # file names (everyone uses these names, nobody types them by hand)
 MANIFEST = "manifest.json"
@@ -18,12 +21,14 @@ PRIVACY_REPORT = "privacy_report.json"
 RESULT_ROW = "result_row.json"
 
 
+
 def artifact_dir(run_id):
     """Folder for one run. Created if it does not exist."""
-    folder = os.path.join(ARTIFACT_ROOT, run_id)
-    os.makedirs(folder, exist_ok=True)
+    root = Path(os.environ.get("PATE_ARTIFACT_ROOT", str(ARTIFACT_ROOT)))
+    folder = root / run_id
+    folder.mkdir(parents=True, exist_ok=True)
     return folder
 
 
 def artifact_path(run_id, file_name):
-    return os.path.join(artifact_dir(run_id), file_name)
+    return artifact_dir(run_id) / file_name

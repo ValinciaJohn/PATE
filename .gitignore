@@ -1,5 +1,11 @@
-data/raw/
-artifacts/
 __pycache__/
-.venv/
+.pytest_cache/
 *.pyc
+artifacts/
+data/raw/
+.venv/
+integration_review/
+common_local_backup/
+*.zip
+
+validation_review/
